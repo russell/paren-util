@@ -9,51 +9,50 @@
 ;    `',(intern string :js-global)))
 
 (defun equal (a b)
-  (return (== a b)))
+  (== a b))
 
 (defun eql (a b)
-  (return (=== a b)))
+  (=== a b))
 
 (defun identity (thing)
-  (return thing))
+  thing)
 
 (defun to-array (array-like)
   (let ((result-arr (array)))
     (dolist (arg array-like)
       (methcall 'js-global::push result-arr arg))
-    (return result-arr)))
+    result-arr))
 
 (defun lispy-map (func arg1)
   (with-arguments-array (arguments-arr)
     (let ((result-arr (array))
 	  (ith-from-each-arg (lambda (i)
-			       (return
 				 (methcall 'js-global::map
 					   (methcall 'js-global::slice arguments-arr 1)
-					(lambda (arg) (return (slot-value arg i))))))))
+					(lambda (arg) (slot-value arg i))))))
       (dotimes (index (slot-value arg1 'js-global::length))
 	(methcall
 	 'js-global::push
 	 result-arr
 	 (methcall 'js-global::apply func nil (ith-from-each-arg index))))
-      (return result-arr))))
+      result-arr)))
 
 (defun merge-into (receiving-obj &rest donating-objs)
   (dolist (other-obj donating-objs)
     (for-in (prop other-obj)
 	    (setf (slot-value receiving-obj prop)
 		  (aref other-obj prop))))
-  (return receiving-obj))
+  receiving-obj)
 
 (defun length (arr)
-  (return (slot-value arr 'js-global::length)))
+  (slot-value arr 'js-global::length))
 
 (defun subseq (arr start &optional end)
   "Just like subseq in lisp."
-  (return (methcall 'js-global::splice (copy-array arr) start (or end (length arr)))))
+  (methcall 'js-global::splice (copy-array arr) start (or end (length arr))))
 
 (defun concat (arr1 arr2)
-  (return (methcall 'js-global::concat arr1 arr2)))
+  (methcall 'js-global::concat arr1 arr2))
 
 (defun lispy-apply (func &rest rest)
   "Similar to lisp's apply method.  Takes a predicate, an object that serves as the 'this'
@@ -64,26 +63,25 @@ appended to the ..."
 			    (- (slot-value rest 'js-global::length)
 			       1)))
 	(last (aref rest (- (slot-value rest 'js-global::length) 1))))
-    (return
       (methcall 'js-global::apply func
 		this
-		(if last 
+		(if last
 		    (methcall 'js-global::concat std-args last)
-		    std-args)))))
+		    std-args))))
 
 (defun collect (fun arr)
   (let ((passing-members (array)))
     (dolist (member arr)
       (if (fun member)
 	  (methcall 'js-global::push passing-members member)))
-    (return passing-members)))
+    passing-members))
 
 (defun find (desired-item arr &key (key identity) (test equal))
   (when arr
     (dolist (item arr)
       (when (funcall test desired-item (funcall key item))
-	(return item))))
-  (return nil))
+	(return-from find item))))
+  nil)
 
 (defvar remove-if-not collect)
 
@@ -93,45 +91,44 @@ appended to the ..."
       (let ((n (funcall key x)))
         (when (or (== nil m) (< n m))
           (setf m n))))
-    (return m)))
+    m))
 
 (defun every (fun &rest arrays)
   (labels ((ith-from-each-arg (i)
-             (return
                (methcall 'jsns::map
                          arrays
-                         (lambda (arg) (return (slot-value arg i)))))))
+                         (lambda (arg) (slot-value arg i)))))
     (let  ((min-length (min-list-element arrays :key #'length)))
       (dotimes (i min-length)
         (when (not (methcall 'js-global::apply fun nil (ith-from-each-arg i)))
-          (return false))))
-    (return true)))
+          (return-from every false))))
+    t))
 
 (defun some (fn arr)
   (dolist (item arr)
     (let ((result (fn item)))
       (when result
-	(return result))))
-  (return false))
+	(return-from some result))))
+  false)
 
 (defun identity (i)
-  (return i))
+  i)
 
 (defun find (item sequence &key (key identity) (test equal))
   (dolist (member sequence)
     (when (funcall test item (funcall key member))
-      (return member)))
-  (return nil))
+      (return-from find member)))
+  nil)
 
 (defun push-on-end (obj place)
-  (return (methcall 'js-global::push place obj)))
+  (methcall 'js-global::push place obj))
 
 (defun remove (item sequence &key (key identity) (test eql))
   (let ((result (array)))
     (dolist (member sequence)
       (when (not (funcall test item (funcall key member)))
 	(push-on-end member result)))
-    (return result)))
+    result))
 
 (defun key-object-to-array (obj)
   "Converts an object like {foo : 'bar'} into an array like ['foo', 'bar'] ..."
@@ -140,29 +137,29 @@ appended to the ..."
       (for-in (key obj)
 	      (methcall 'js-global::push result key)
 	      (methcall 'js-global::push result (slot-value obj key))))
-    (return result)))
+    result))
 
 (defun object-values (obj)
   (let ((result (array)))
     (for-in (key obj)
 	     (methcall 'js-global::push result (aref obj key)))
-    (return result)))
+    result))
 
 (defun keys-array-fn-to-key-object-fn (fn num-non-keyword-args)
   "Creates a function that accepts NUM-NON-KEYWORD-ARG # of normal and optional arguments, and
 then a key-object parameter (a generic object that's keys/values are keyword arguments to the
 function) from a normal defun-ed function."
-  (return (lambda (&rest args)
+  (lambda (&rest args)
 	    (let ((transformed-args (methcall 'js-global::concat
 					      (subseq args 0 num-non-keyword-args)
 					      (key-object-to-array (elt args num-non-keyword-args)))))
 ;	      (log "Transformed args / args")
 ;	      (log transformed-args)
 ;	      (log args)
-	      
-	      (return (methcall 'js-global::apply fn ps:this transformed-args))))))
-		      
-				
+
+	      (methcall 'js-global::apply fn ps:this transformed-args))))
+
+
 
 ;; implement Javascript 1.6 methods ourselves
 (defaultf (slot-value js-global::-Array 'jsns::prototype 'jsns::map)
@@ -170,7 +167,7 @@ function) from a normal defun-ed function."
       (let ((result (array)))
 	(dolist (item ps:this)
 	  (methcall 'js-global::push result (fn item)))
-	(return result))))
+	result)))
 
 (defaultf (slot-value js-global::-Array 'jsns::prototype 'jsns::index-of)
     (lambda (sought &optional (from-index 0))
@@ -179,20 +176,20 @@ function) from a normal defun-ed function."
 	  (when (and (>= index from-index) (=== item sought))
 	    (return index))
 	  (incf index 1))
-	(return -1))))
+	-1)))
 
 
 (defaultf (slot-value js-global::-Array 'jsns::prototype 'jsns::filter)
     (lambda (fun)
-      (return (collect fun js-global:this))))
+      (collect fun js-global:this)))
 
 (defaultf (slot-value js-global::-Array 'jsns::prototype 'jsns::every)
     (lambda (fun)
-      (return (every fun js-global:this))))
+      (every fun js-global:this)))
 
 (defaultf (slot-value js-global::-Array 'jsns::prototype 'jsns::some)
     (lambda (fun)
-      (return (some fun js-global:this))))
+      (some fun js-global:this)))
 
 ; this isn't pretty but it works
 (defun remove-duplicates (in-arr &optional (equality-lambda eql))
@@ -205,12 +202,12 @@ to a strict === comparison."
 	  (break)
 	  (let ((latest-unique-item (slot-value working-array 0)))
 	    (methcall 'js-global::push out-arr latest-unique-item)
-	    (setf working-array 
-		  (methcall 'js-global::filter working-array 
+	    (setf working-array
+		  (methcall 'js-global::filter working-array
 			    (lambda (test-item)
-			      (return (not (equality-lambda
-					    test-item latest-unique-item)))))))))
-    (return out-arr)))
+			      (not (equality-lambda
+					    test-item latest-unique-item))))))))
+    out-arr))
 
 
 (defun rough-set-difference (x y)
@@ -225,7 +222,7 @@ whose string forms are compared for equality."
     
     (for-in (k h)
             (push-on-end (slot-value h k) result))
-    (return result)))
+    result))
 
 (defun rough-set-union (x y)
   "Returns everything in X or Y, where X and Y are arrays
@@ -239,7 +236,7 @@ whose string forms are compared for equality."
     
     (for-in (k h)
             (push-on-end (slot-value h k) result))
-    (return result)))
+    result))
 
 (defun lexicographic-compare (a b)
   "Compares to strings lexicographically, returning negative if a < b, 0 if a = b, and positive
@@ -249,21 +246,21 @@ if a > b.  Ignores case and treats `9' < `80'."
   (let ((str-a (methcall 'js-global::to-lower-case a))
 	(str-b (methcall 'js-global::to-lower-case b)))
     (let ((rv (if (< str-a str-b) -1 (if (> str-a str-b) 1 0))))
-      (return rv))))
+      rv)))
 
 (defun arrayp (obj)
-  (return (=== js-global::-array (slot-value obj 'js-global::constructor))))
+  (=== js-global::-array (slot-value obj 'js-global::constructor)))
 
 (defun query-serialize-value (value)
   "Given VALUE, turns it into a form-submittable value.
 QUERY-SERIALIZE-VALUE is called recursively on an array.
 URLEncodeComponent is called on strings"
   (cond
-    ((stringp value) (return (jsns::encode-u-r-i-component value)))
-    ((arrayp value) (return (methcall 'jsns::join
+    ((stringp value) (jsns::encode-u-r-i-component value))
+    ((arrayp value) (methcall 'jsns::join
                                       (lispy-map #'query-serialize-value value)
-                                      ",")))
-    (t (return value))))
+                                      ","))
+    (t value)))
 
 (defun query-decode (str &key arrayp)
   "Given a query string (with or without the leading ?), parses the
@@ -279,18 +276,18 @@ encoded values and returns a dictionary."
                                        (value (if (elt split 1)
                                                   (jsns::decode-u-r-i-component (elt split 1))
                                                   nil)))
-                                 (return (array key value))))
+                                 (array key value)))
                              parts)))
     (when arrayp
-      (return keyvals))
+      (return-from query-decode keyvals))
     (let ((o (create)))
       (dotimes (i (length keyvals))
         (let ((key (slot-value keyvals i 0))
               (val (slot-value keyvals i 1)))
           (setf (slot-value o key) val)))
-      (return o))))
-                                 
-                                               
+      o)))
+
+
 (defun query-serialize (arr-or-hash)
   "Serializes an object's keys and values into something that may be placed into a URI.
 
@@ -318,17 +315,16 @@ and then the former method is used to encode to a string."
 	  (unless (eql (- (length arr) 2) i)
 	    (setf str (+ str "&")))
           (incf i 2)))
-      (return str))))
+      str)))
 
 (defun add-parameters-to-url (url parameters)
   (let ((params-encoded (query-serialize parameters))
         (?-index (methcall 'jsns::index-of url "?")))
-    (return
       (if (=== -1 ?-index)
           (+ url "?" params-encoded)
           (if (=== (- (length url) 1) ?-index)
               (+ url params-encoded)
-              (+ url "&" params-encoded))))))
+              (+ url "&" params-encoded)))))
 
 (defun ajax-request (url &key on-success on-failure on-loading on-loaded on-interactive
                      headers body (method :get) parameters )
@@ -362,20 +358,20 @@ and then the former method is used to encode to a string."
     (for-in (key obj)
 	    (methcall 'js-global::push arr key)
 	    (methcall 'js-global::push arr (slot-value obj key)))
-    (return arr)))
+    arr))
 
 (defun escape-html (str)
   ;; stolen from prototype
   (let ((div (methcall 'jsns::create-element js-global:document "div"))
 	(text (methcall 'jsns::create-text-node js-global:document str)))
     (methcall 'jsns::append-child div text)
-    (return (slot-value div 'js-global::inner-h-t-m-l))))
+    (slot-value div 'js-global::inner-h-t-m-l)))
 
 (defun elem-by-id (id)
   (let ((result nil))
     (cond
       ((slot-value document 'jsns::get-element-by-id)
-       (return (paren-util:methcall 'jsns::get-element-by-id document id))))))
+       (paren-util:methcall 'jsns::get-element-by-id document id)))))
 
 (defun remove-elem (elem)
   (let ((parent-elem (slot-value elem 'js-global::parent-node)))
@@ -392,7 +388,7 @@ and then the former method is used to encode to a string."
   (let ((result (array)))
     (dolist (item arr)
       (methcall 'jsns::push result item))
-    (return result)))
+    result))
 
 ;;; UI-oriented
 
@@ -412,7 +408,7 @@ and then the former method is used to encode to a string."
 ;; show/hide elements
 (defun elem-visible? (elem)
   "Returns t if the element is not hidden"
-  (return (!== "none" (slot-value elem 'js-global::style 'js-global::display))))
+  (!== "none" (slot-value elem 'js-global::style 'js-global::display)))
 
 (defun elem-hide (elem)
   "Hides the element."
@@ -433,15 +429,14 @@ and then the former method is used to encode to a string."
 ;; page size calculation
 (defun calculate-framep ()
   "Returns true if the javascript context is inside a frame."
-  (try 
-   (return
+  (try
     (and (slot-value js-global:window 'js-global::parent 'js-global::frames
                      (slot-value js-global:window 'js-global::name))
          (<= (length (methcall 'js-global::get-elements-by-tag-name
                                (slot-value js-global::parent 'js-global:document)
                                "frameset"))
-             0)))
-   (:catch (e) (return t))))
+             0))
+   (:catch (e) t)))
 
 (defun toplevel-window (&optional (this-window js-global::self) (require-permission t))
   "Returns the toplevel window regardless of framesets and so on."
@@ -452,9 +447,9 @@ and then the former method is used to encode to a string."
      (progn
        ;; ensure we have permissions -- this will throw an error if we don't
        (when (slot-value topwin 'js-global:document 'js-global::location 'js-global::href)
-         (return topwin))
-       (return topwin))
-     (:catch (e) (return (if require-permission this-window topwin))))))
+         (return-from toplevel-window topwin))
+       topwin)
+     (:catch (e) (if require-permission this-window topwin)))))
 
 (defun calculate-page-scroll (&key toplevel)
   "Returns an array of length 2 with the x and y scroll."
@@ -462,7 +457,7 @@ and then the former method is used to encode to a string."
 	 (doc (if (and toplevel framep) (slot-value js-global::parent 'js-global:document) js-global:document))
 	 (win (if (and toplevel framep) js-global::parent js-global::self))
 	 (doc-elem (slot-value doc 'js-global::document-element)))
-    (return (array
+    (array
 	     (or (slot-value win 'js-global::page-x-offset)
 		 (slot-value doc 'js-global::body 'js-global::scroll-left)
 		 (and doc-elem (slot-value doc-elem 'js-global::scroll-left))
@@ -470,8 +465,8 @@ and then the former method is used to encode to a string."
 	     (or (slot-value win 'js-global::page-y-offset)
 		 (slot-value doc 'js-global::body 'js-global::scroll-top)
 		 (and doc-elem (slot-value doc-elem 'js-global::scroll-top))
-		 0)))))
-    
+		 0))))
+
 
 (defun calculate-max-page-scroll (&key toplevel)
   "Returns an array of length 2 with the x and y scroll."
@@ -483,18 +478,18 @@ and then the former method is used to encode to a string."
       ((and (slot-value js-global:window 'js-global::inner-height)
 	    (slot-value js-global:window 'js-global::scroll-max-y))
 ;       (log "first")
-       (return (array (slot-value js-global:window 'js-global::scroll-max-x)
+       (array (slot-value js-global:window 'js-global::scroll-max-x)
 		      (+ (if framep
 			     (slot-value js-global::parent 'js-global::inner-height)
 			     (slot-value js-global::self 'js-global::inner-height))
 			 (if framep
 			     (slot-value js-global::parent 'js-global::scroll-max-y)
-			     (slot-value js-global::self 'js-global::scroll-max-y))))))
+			     (slot-value js-global::self 'js-global::scroll-max-y)))))
       ((> (slot-value doc 'js-global::body 'js-global::scroll-height)
 	  (slot-value doc 'js-global::body 'js-global::offset-height))
 ;       (log "second")
-       (return (array (slot-value doc 'js-global::body 'js-global::scroll-width)
-		      (slot-value doc 'js-global::body 'js-global::scroll-height))))
+       (array (slot-value doc 'js-global::body 'js-global::scroll-width)
+		      (slot-value doc 'js-global::body 'js-global::scroll-height)))
       (t
 ;       (log "third")
        (let* ((html-elem (methcall 'js-global::item
@@ -504,37 +499,37 @@ and then the former method is used to encode to a string."
 	      (oh (slot-value html-elem 'js-global::offset-height))
 	      (body-ow (slot-value doc 'js-global::body 'js-global::offset-width))
 	      (body-oh (slot-value doc 'js-global::body 'js-global::offset-width)))
-	 (return (array (if (< ow body-ow) body-ow ow)
-			(if (< oh body-oh) body-oh oh))))))))
+	 (array (if (< ow body-ow) body-ow ow)
+			(if (< oh body-oh) body-oh oh)))))))
 
 (defun calculate-window-size ()
   "Returns an array of length 2 with the size of the window in pixels."
   (let* ((framep (calculate-framep))
 	 (relevant-window (if framep js-global::parent js-global::self))
 	 (doc (if framep (slot-value js-global::parent 'js-global:document) js-global:document)))
-    
+
     (cond
       ((slot-value js-global::self 'js-global::inner-height)
-       (return (array (slot-value relevant-window 'js-global::inner-width)
-		      (slot-value relevant-window 'js-global::inner-height))))
+       (array (slot-value relevant-window 'js-global::inner-width)
+		      (slot-value relevant-window 'js-global::inner-height)))
       ((and (slot-value js-global::document 'js-global::document-element)
 	    (slot-value js-global::document 'js-global::document-element 'js-global::client-height))
        (let ((doc-elem (slot-value doc 'js-global::document-element)))
-	 (return (array (slot-value doc 'js-global::client-width)
-			(slot-value doc 'js-global::client-height)))))
+	 (array (slot-value doc 'js-global::client-width)
+			(slot-value doc 'js-global::client-height))))
       ((slot-value js-global::document 'js-global::body)
        (let* ((html-elem (methcall 'js-global::item
 				   (methcall 'js-global::get-elements-by-tag-name doc "html")
 				   0))
 	      (win-width (slot-value html-elem 'js-global::client-width))
 	      (win-height (slot-value html-elem 'js-global::client-height)))
-	 (return (array (if (=== 0 win-width)
+	 (array (if (=== 0 win-width)
 			    (slot-value doc 'js-global::body 'js-global::client-width)
 			    win-width)
 			(if (=== 0 win-height)
 			    (slot-value doc 'js-global::body 'js-global::client-height)
-			    win-height))))))))
-      
+			    win-height)))))))
+
 (defun calculate-page-size ()
   (let* ((scroll (calculate-max-page-scroll))
 	 (x-scroll (elt scroll 0))
@@ -548,9 +543,9 @@ and then the former method is used to encode to a string."
 	 (page-width (if (< x-scroll window-width)
 			 window-width
 			 x-scroll)))
-    (return (array page-width page-height
+    (array page-width page-height
 		   window-width window-height
-		   x-scroll y-scroll))))
+		   x-scroll y-scroll)))
 
 ;; element or html insertion
 ;;;; HTML/JS utility
@@ -581,7 +576,7 @@ at the :top or :bottom of the element."
 			    (methcall 'jsns::insert-before element node (slot-value element 'jsns::first-child)))))
       (:bottom (setf result (lambda (element node)
 			      (methcall 'jsns::append-child element node)))))
-    (return result)))
+    result))
 
 (defun write-attributes (elem attributes)
   "Given a hash table of attributes and a dom element, sets the attributes of the element
@@ -593,7 +588,7 @@ according to the attribute names."
 	      ((or (=== false value) (=== nil value))       (methcall 'jsns::remove-attributes elem name))
 	      ((=== true value) (methcall 'jsns::set-attribute elem name name))
 	      (t (methcall  'jsns::set-attribute elem name value)))))
-  (return elem))
+  elem)
 
 (defun create-elem (tag-name &optional (attributes-obj (create)))
   "Creates a DOM element with the given tag name and attributes."
@@ -601,10 +596,10 @@ according to the attribute names."
   (when (and *internet-explorer* (slot-value attributes-obj 'jsns::name))
     (setf tag-name (+ "<" tag-name " name=\"" (slot-value attributes-obj 'jsns::name) "\">"))
     (delete (slot-value attributes-obj 'jsns::name)))
-  
+
   (let ((elem (methcall 'jsns::create-element js-global:document tag-name)))
     (write-attributes elem attributes-obj)
-    (return elem)))
+    elem))
 
 (defun unescape-html (str)
   (let  ((node (create-elem "DIV")))
@@ -613,10 +608,10 @@ according to the attribute names."
 ;    (log node)
     (cond
       ((slot-value node 'js-global::text-content)
-       (return (slot-value node 'js-global::text-content)))
+       (slot-value node 'js-global::text-content))
       ((slot-value node 'js-global::inner-text)
-       (return (slot-value node 'js-global::inner-text)))
-      (t (return str)))))
+       (slot-value node 'js-global::inner-text))
+      (t str))))
 
 (defun html-content-to-dom-nodes (html-content tag-name)
   "Given some HTML content, inserts it into an anonymous element with the given tag-name (e.g. 'DIV', 'TABLE'),
@@ -630,10 +625,10 @@ and returns an array of elements."
 	  (dotimes (i (aref tag 2))
 	    (setf div (slot-value div 'jsns::first-child))))
 	 (setf (slot-value div 'jsns::inner-h-t-m-l) html-content))
-    (return (to-array (slot-value div 'jsns::child-nodes)))))
+    (to-array (slot-value div 'jsns::child-nodes))))
 
 (defun stringp (thing)
-  (return (=== "string" (ps:typeof thing))))
+  (=== "string" (ps:typeof thing)))
 
 (defun elem-insert (elem content location)
   "Location is one of :top :bottom :before :after.  Content is an html string."
@@ -653,9 +648,9 @@ and returns an array of elements."
 	       content-nodes)))
 
 (defun re-escape (text)
-  (return (methcall 'js-global::replace text
+  (methcall 'js-global::replace text
 		    (regex "/(\\/|\\.|\\*|\\+|\\?|\\||\\(|\\)|\\[|\\]|\\{|\\}|\\\\)/g")
-		    "\\$1")))
+		    "\\$1"))
 
 ;; here is the orignal version of the above regex
 ;(defvar *re-specials* (array "/" "." "*" "+" "?" "|" "(" ")" "[" "]" "{" "}" "\\"))
@@ -670,16 +665,16 @@ and returns an array of elements."
 ;			     "g")))))))
 
 (defun join (strings text)
-  (return (methcall 'js-global::join strings text)))
+  (methcall 'js-global::join strings text))
 
 (defun nreverse (arr)
-  (return (methcall 'jsns::reverse arr)))
+  (methcall 'jsns::reverse arr))
 
 (defun reverse-in-place (arr)
-  (return (methcall 'jsns::reverse arr)))
+  (methcall 'jsns::reverse arr))
 
 (defun reverse (arr)
-  (return (methcall 'jsns::reverse (copy-array arr))))
+  (methcall 'jsns::reverse (copy-array arr)))
 
 (defun elem-offset (elem)
   "Returns the position of the element relative to the origin of the
@@ -690,7 +685,7 @@ window.  Returns an array in the form (left-offset top-offset)."
       (setf x (+ x (slot-value elem 'jsns::offset-left))
             y (+ y (slot-value elem 'jsns::offset-top))
             elem (slot-value elem 'jsns::offset-parent)))
-    (return (list x y))))
+    (list x y)))
 
 (defun scroll-to-elem (elem)
   "Scrolls the window to a particular element."
