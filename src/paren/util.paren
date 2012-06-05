@@ -165,7 +165,7 @@ function) from a normal defun-ed function."
       (let ((index 0))
 	(dolist (item js-global:this)
 	  (when (and (>= index from-index) (eql item sought))
-	    (return index))
+	    (return-from 'jsns::index-of index))
 	  (incf index 1))
 	-1)))
 
