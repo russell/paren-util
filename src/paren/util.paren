@@ -111,9 +111,6 @@ appended to the ..."
 	(return-from some result))))
   false)
 
-(defun identity (i)
-  i)
-
 (defun find (item sequence &key (key identity) (test equal))
   (dolist (member sequence)
     (when (funcall test item (funcall key member))
