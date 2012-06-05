@@ -8,6 +8,12 @@
 ;		  (t (error "Expected string or symbole but got ~S" symbol-like)))))
 ;    `',(intern string :js-global)))
 
+(defun equal (a b)
+  (== a b))
+
+(defun eql (a b)
+  (=== a b))
+
 (defun identity (thing)
   thing)
 
