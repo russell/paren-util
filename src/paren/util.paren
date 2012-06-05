@@ -8,12 +8,6 @@
 ;		  (t (error "Expected string or symbole but got ~S" symbol-like)))))
 ;    `',(intern string :js-global)))
 
-(defun equal (a b)
-  (== a b))
-
-(defun eql (a b)
-  (=== a b))
-
 (defun identity (thing)
   thing)
 
@@ -89,7 +83,7 @@ appended to the ..."
   (let (m)
     (dolist (x list)
       (let ((n (funcall key x)))
-        (when (or (== nil m) (< n m))
+        (when (or (equal nil m) (< n m))
           (setf m n))))
     m))
 
@@ -170,7 +164,7 @@ function) from a normal defun-ed function."
     (lambda (sought &optional (from-index 0))
       (let ((index 0))
 	(dolist (item js-global:this)
-	  (when (and (>= index from-index) (=== item sought))
+	  (when (and (>= index from-index) (eql item sought))
 	    (return index))
 	  (incf index 1))
 	-1)))
@@ -191,11 +185,11 @@ function) from a normal defun-ed function."
 ; this isn't pretty but it works
 (defun remove-duplicates (in-arr &optional (equality-lambda eql))
   "Removes duplicates in the given array using the given equality function, which defaults
-to a strict === comparison."
+to a strict eql comparison."
   (let ((working-array in-arr)
 	(out-arr (array)))
     (while t
-      (if (== 0 (slot-value working-array 'js-global::length))
+      (if (equal 0 (slot-value working-array 'js-global::length))
 	  (break)
 	  (let ((latest-unique-item (slot-value working-array 0)))
 	    (methcall 'js-global::push out-arr latest-unique-item)
@@ -246,7 +240,7 @@ if a > b.  Ignores case and treats `9' < `80'."
       rv)))
 
 (defun arrayp (obj)
-  (=== js-global::-array (slot-value obj 'js-global::constructor)))
+  (eql js-global::-array (slot-value obj 'js-global::constructor)))
 
 (defun query-serialize-value (value)
   "Given VALUE, turns it into a form-submittable value.
@@ -262,7 +256,7 @@ URLEncodeComponent is called on strings"
 (defun query-decode (str &key arrayp)
   "Given a query string (with or without the leading ?), parses the
 encoded values and returns a dictionary."
-  (when (=== "?" (elt str 0))
+  (when (eql "?" (elt str 0))
     (setf str (methcall 'jsns::substring str 1)))
   (let* ((parts (methcall 'jsns::split str "&"))
          (keyvals (lispy-map (lambda (x)
@@ -317,9 +311,9 @@ and then the former method is used to encode to a string."
 (defun add-parameters-to-url (url parameters)
   (let ((params-encoded (query-serialize parameters))
         (?-index (methcall 'jsns::index-of url "?")))
-      (if (=== -1 ?-index)
+      (if (eql -1 ?-index)
           (+ url "?" params-encoded)
-          (if (=== (- (length url) 1) ?-index)
+          (if (eql (- (length url) 1) ?-index)
               (+ url params-encoded)
               (+ url "&" params-encoded)))))
 
@@ -334,7 +328,7 @@ and then the former method is used to encode to a string."
 	 (method (methcall 'jsns::to-upper-case method))
 	 (on-rsc-fn (lambda ()
 		      (setf ready-state (slot-value transport 'js-global::ready-state))
-		      (when (=== 4 ready-state)
+		      (when (eql 4 ready-state)
 			(funcall on-success (slot-value transport 'jsns::response-text) transport)))))
     (setf (slot-value transport 'js-global::onreadystatechange) on-rsc-fn)
     (when (and parameters (eql "GET" method))
@@ -378,7 +372,7 @@ and then the former method is used to encode to a string."
 
 (defun remove-from-array (arr item)
   (let ((index (methcall 'js-global::index-of arr item)))
-    (when (!== -1 index)
+    (when (not (equal -1 index))
       (methcall 'js-global::splice arr index 1))))
 
 (defun copy-array (arr)
@@ -393,7 +387,7 @@ and then the former method is used to encode to a string."
   (symbol-macrolet ((class-name (slot-value elem 'jsns::class-name)))
     (let ((old-str (or class-name "")))
       (setf class-name
-            (if (=== "" old-str)
+            (if (eql "" old-str)
                 clz
                 (+ old-str " " clz))))))
 
@@ -405,7 +399,7 @@ and then the former method is used to encode to a string."
 ;; show/hide elements
 (defun elem-visible? (elem)
   "Returns t if the element is not hidden"
-  (!== "none" (slot-value elem 'js-global::style 'js-global::display)))
+  (not (equal "none" (slot-value elem 'js-global::style 'js-global::display))))
 
 (defun elem-hide (elem)
   "Hides the element."
@@ -520,10 +514,10 @@ and then the former method is used to encode to a string."
 				   0))
 	      (win-width (slot-value html-elem 'js-global::client-width))
 	      (win-height (slot-value html-elem 'js-global::client-height)))
-	 (array (if (=== 0 win-width)
+	 (array (if (eql 0 win-width)
 			    (slot-value doc 'js-global::body 'js-global::client-width)
 			    win-width)
-			(if (=== 0 win-height)
+			(if (eql 0 win-height)
 			    (slot-value doc 'js-global::body 'js-global::client-height)
 			    win-height)))))))
 
@@ -582,8 +576,8 @@ according to the attribute names."
 	  (let ((name (or (slot-value *attribute-translations* attr) attr))
 		(value (slot-value attributes attr)))
 	    (cond
-	      ((or (=== false value) (=== nil value))       (methcall 'jsns::remove-attributes elem name))
-	      ((=== true value) (methcall 'jsns::set-attribute elem name name))
+	      ((or (eql false value) (eql nil value))       (methcall 'jsns::remove-attributes elem name))
+	      ((eql true value) (methcall 'jsns::set-attribute elem name name))
 	      (t (methcall  'jsns::set-attribute elem name value)))))
   elem)
 
@@ -625,19 +619,19 @@ and returns an array of elements."
     (to-array (slot-value div 'jsns::child-nodes))))
 
 (defun stringp (thing)
-  (=== "string" (ps:typeof thing)))
+  (eql "string" (ps:typeof thing)))
 
 (defun elem-insert (elem content location)
   "Location is one of :top :bottom :before :after.  Content is an html string."
   (let* ((insert-fn (insertion-fn location))
-	 (insert-elem-tag-name (slot-value (if (or (== :before location) (== :after location))
+	 (insert-elem-tag-name (slot-value (if (or (equal :before location) (equal :after location))
 					       (slot-value elem 'jsns::parent-node)
 					       elem)
 					   'jsns::tag-name))
 	 (content-nodes (if (stringp content)
 			    (html-content-to-dom-nodes content insert-elem-tag-name)
 			    (array content))))
-    (when (or (=== :top location) (=== :after location))
+    (when (or (eql :top location) (eql :after location))
       (methcall 'jsns::reverse content-nodes))
 
     (lispy-map (lambda (content-node)
